@@ -201,7 +201,7 @@
         }
         
         .stats-grid {
-            display: grid;
+            display: none; /* 隐藏统计卡片 */
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             padding: 30px;
@@ -507,6 +507,7 @@
             }
             
             .stats-grid {
+                display: none; /* 保持隐藏状态 */
                 grid-template-columns: 1fr;
                 padding: 20px;
             }
@@ -949,7 +950,7 @@
                     
                     console.log('数据加载成功:', processedData.length, '条记录');
                     
-                    updateStatistics();
+                    // updateStatistics(); // 已隐藏统计卡片，注释掉此调用
                     populateFilters();
                     renderTable();
                     
@@ -26298,7 +26299,8 @@
         
         // 注意：CSV解析函数已移除，因为我们直接使用嵌入的PROCESSED_DATA
         
-        // 更新统计信息
+        // 更新统计信息 - 已隐藏统计卡片，注释掉此函数
+        /*
         function updateStatistics() {
             document.getElementById('totalRecords').textContent = processedData.length;
             document.getElementById('totalAsins').textContent = 
@@ -26308,6 +26310,7 @@
             document.getElementById('totalITKs').textContent = 
                 new Set(processedData.map(record => record.ITK)).size;
         }
+        */
         
         // 填充筛选器选项
         function populateFilters() {
@@ -26916,7 +26919,7 @@
                 <h3>价格区间</h3>
                 <p>${record.price_band}</p>
             </div>
-            <div class="info-item">
+            <div class="info-item" style="display: none;">
                 <h3>推荐ASIN数量</h3>
                 <p>${record.recommendedAsins.length} 个产品</p>
             </div>
@@ -26963,12 +26966,12 @@
                         <img src="${asin.image}" alt="${asin.title}" 
                              onerror="this.innerHTML='<div style=\\'color:#666;font-size:10px;text-align:center;padding:20px;\\'>图片<br>加载失败</div>'" />
                     </div>
-                    <div class="asin-label">产品 ${index + 1}</div>
+                    <div class="asin-label" style="display: none;">产品 ${index + 1}</div>
                 </div>
             `).join('')}
         </div>
         
-        <div style="text-align: center; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <div style="display: none; text-align: center; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
             <p style="color: #495057; font-size: 14px; margin: 0;">
                 📊 共 ${recommendedAsins.length} 个推荐产品 | ${gridColumns} 列布局
             </p>
