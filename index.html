@@ -26673,27 +26673,117 @@
         
         // 生成PPT选品指南
         function generatePPT(recordIndex) {
-            const record = filteredData[recordIndex];
-            
-            // 创建PPT HTML内容
-            const pptContent = generatePPTContent(record);
-            
-            // 创建新窗口显示PPT
-            const pptWindow = window.open('', '_blank', 'width=1200,height=800');
-            pptWindow.document.write(pptContent);
-            pptWindow.document.close();
-            
-            // 添加打印和下载功能
-            setTimeout(() => {
-                pptWindow.focus();
-                // 可以添加自动打印功能
-                // pptWindow.print();
-            }, 1000);
+            try {
+                console.log('开始生成PPT，记录索引:', recordIndex);
+                console.log('filteredData长度:', filteredData.length);
+                
+                // 检查索引是否有效
+                if (recordIndex < 0 || recordIndex >= filteredData.length) {
+                    throw new Error(`无效的记录索引: ${recordIndex}, 数据长度: ${filteredData.length}`);
+                }
+                
+                const record = filteredData[recordIndex];
+                console.log('获取到记录:', record);
+                
+                // 检查记录是否存在
+                if (!record) {
+                    throw new Error(`记录不存在，索引: ${recordIndex}`);
+                }
+                
+                // 检查必要字段
+                if (!record.ITK || !record.PT || !record.price_band) {
+                    throw new Error(`记录缺少必要字段: ITK=${record.ITK}, PT=${record.PT}, price_band=${record.price_band}`);
+                }
+                
+                // 检查推荐ASIN
+                if (!record.recommendedAsins || !Array.isArray(record.recommendedAsins)) {
+                    console.warn('推荐ASIN数据异常，使用空数组');
+                    record.recommendedAsins = [];
+                }
+                
+                console.log('开始生成PPT内容...');
+                
+                // 创建PPT HTML内容
+                const pptContent = generatePPTContent(record);
+                
+                console.log('PPT内容生成成功，长度:', pptContent.length);
+                
+                // 创建新窗口显示PPT
+                const pptWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+                
+                if (!pptWindow) {
+                    throw new Error('无法打开新窗口，可能被浏览器阻止了弹窗');
+                }
+                
+                pptWindow.document.write(pptContent);
+                pptWindow.document.close();
+                
+                console.log('PPT窗口创建成功');
+                
+                // 添加打印和下载功能
+                setTimeout(() => {
+                    try {
+                        pptWindow.focus();
+                        console.log('PPT窗口获得焦点');
+                    } catch (e) {
+                        console.warn('无法设置窗口焦点:', e);
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('生成PPT时发生错误:', error);
+                alert(`生成选品指南失败：${error.message}\n\n请检查浏览器控制台获取详细信息。`);
+            }
         }
         
         // 生成PPT内容
         function generatePPTContent(record) {
-            const analysis = analyzeRecommendedAsins(record.recommendedAsins);
+            try {
+                console.log('开始生成PPT内容，记录:', record);
+                
+                // 数据验证和默认值设置
+                const safeRecord = {
+                    ITK: record.ITK || '未知类别',
+                    PT: record.PT || '未知类型',
+                    price_band: record.price_band || '未知价格',
+                    recommendedAsins: Array.isArray(record.recommendedAsins) ? record.recommendedAsins : [],
+                    mainTitle: record.mainTitle || '产品标题',
+                    haul_hot_rating: record.haul_hot_rating || '★'
+                };
+                
+                console.log('安全记录:', safeRecord);
+                
+                // 分析推荐ASIN数据
+                let analysis;
+                try {
+                    analysis = analyzeRecommendedAsins(safeRecord.recommendedAsins);
+                    console.log('分析结果:', analysis);
+                } catch (e) {
+                    console.warn('分析ASIN数据失败，使用默认分析:', e);
+                    analysis = {
+                        productTypes: { '通用产品': 1 },
+                        materials: { '混合材质': 1 },
+                        keywords: { '基础款': 1 },
+                        designElements: { '经典设计': 1 }
+                    };
+                }
+                
+                // 安全的字符串处理
+                const escapeHtml = (str) => {
+                    if (!str) return '';
+                    return String(str)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                };
+                
+                const safeITK = escapeHtml(safeRecord.ITK);
+                const safePT = escapeHtml(safeRecord.PT);
+                const safePriceBand = escapeHtml(safeRecord.price_band);
+                
+                console.log('开始构建HTML内容...');
             
             return `
 <!DOCTYPE html>
@@ -26701,7 +26791,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>基于${record.ITK}的Amazon Haul选品建议</title>
+    <title>基于${safeITK}的Amazon Haul选品建议</title>
     <style>
         body { font-family: 'Amazon Ember', Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
         .slide { 
@@ -26897,9 +26987,9 @@
     
     <!-- 封面页 -->
     <div class="slide cover-slide">
-        <h1>基于${record.ITK}的Amazon Haul选品建议</h1>
-        <h2>PT类型: ${record.PT}</h2>
-        <h2>价格区间: ${record.price_band}</h2>
+        <h1>基于${safeITK}的Amazon Haul选品建议</h1>
+        <h2>PT类型: ${safePT}</h2>
+        <h2>价格区间: ${safePriceBand}</h2>
         <div class="date">生成时间: ${new Date().toLocaleDateString('zh-CN')}</div>
     </div>
     
@@ -26909,15 +26999,15 @@
         <div class="info-grid">
             <div class="info-item">
                 <h3>产品类型 (PT)</h3>
-                <p>${record.PT}</p>
+                <p>${safePT}</p>
             </div>
             <div class="info-item">
                 <h3>ITK类别</h3>
-                <p>${record.ITK}</p>
+                <p>${safeITK}</p>
             </div>
             <div class="info-item">
                 <h3>价格区间</h3>
-                <p>${record.price_band}</p>
+                <p>${safePriceBand}</p>
             </div>
             <div class="info-item" style="display: none;">
                 <h3>推荐ASIN数量</h3>
@@ -26926,45 +27016,115 @@
         </div>
     </div>
     
-    ${generateAsinPages(record.recommendedAsins)}
+    ${generateAsinPages(safeRecord.recommendedAsins)}
     
-    ${generateAnalysisSlide(analysis, record.recommendedAsins.length)}
+    ${generateAnalysisSlide(analysis, safeRecord.recommendedAsins.length)}
     
-    ${generateStrategySlide(analysis, record)}
+    ${generateStrategySlide(analysis, safeRecord)}
     
 </body>
 </html>
             `;
+            
+            } catch (error) {
+                console.error('生成PPT内容时发生错误:', error);
+                // 返回一个简单的错误页面
+                return `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选品指南生成错误</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+        .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .info { color: #1976d2; background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🚫 选品指南生成失败</h1>
+    <div class="error">
+        <h3>错误信息：</h3>
+        <p>${error.message}</p>
+    </div>
+    <div class="info">
+        <h3>建议解决方案：</h3>
+        <ul style="text-align: left; display: inline-block;">
+            <li>刷新页面后重试</li>
+            <li>检查数据是否完整</li>
+            <li>联系技术支持</li>
+        </ul>
+    </div>
+    <button onclick="window.close()" style="padding: 10px 20px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        关闭窗口
+    </button>
+</body>
+</html>
+                `;
+            }
         }
         
         // 生成ASIN展示页面（所有产品放在同一页）
         function generateAsinPages(recommendedAsins) {
-            if (recommendedAsins.length === 0) {
-                return '';
-            }
-            
-            // 根据产品数量决定网格列数
-            let gridColumns;
-            if (recommendedAsins.length <= 6) {
-                gridColumns = Math.min(recommendedAsins.length, 6); // 1-6列
-            } else if (recommendedAsins.length <= 12) {
-                gridColumns = 4; // 4列
-            } else if (recommendedAsins.length <= 20) {
-                gridColumns = 5; // 5列
-            } else {
-                gridColumns = 6; // 6列
-            }
+            try {
+                console.log('生成ASIN页面，产品数量:', recommendedAsins ? recommendedAsins.length : 0);
+                
+                if (!recommendedAsins || !Array.isArray(recommendedAsins) || recommendedAsins.length === 0) {
+                    return `
+    <!-- 推荐ASIN产品页（无产品） -->
+    <div class="slide">
+        <h2>🛍️ 推荐ASIN产品</h2>
+        <div style="text-align: center; padding: 60px; color: #666;">
+            <h3>暂无推荐产品</h3>
+            <p>该类别下暂时没有可推荐的ASIN产品</p>
+        </div>
+    </div>`;
+                }
+                
+                // 根据产品数量决定网格列数
+                let gridColumns;
+                if (recommendedAsins.length <= 6) {
+                    gridColumns = Math.min(recommendedAsins.length, 6); // 1-6列
+                } else if (recommendedAsins.length <= 12) {
+                    gridColumns = 4; // 4列
+                } else if (recommendedAsins.length <= 20) {
+                    gridColumns = 5; // 5列
+                } else {
+                    gridColumns = 6; // 6列
+                }
+                
+                console.log('网格列数:', gridColumns);
+                
+                // 安全的ASIN数据处理
+                const safeAsins = recommendedAsins.map((asin, index) => {
+                    const safeAsin = {
+                        asin: asin.asin || `ASIN_${index}`,
+                        title: asin.title || '产品标题',
+                        image: asin.image || 'https://via.placeholder.com/140x140?text=No+Image',
+                        url: asin.url || '#'
+                    };
+                    
+                    // 确保图片URL有效
+                    if (!safeAsin.image.startsWith('http')) {
+                        safeAsin.image = 'https://via.placeholder.com/140x140?text=No+Image';
+                    }
+                    
+                    return safeAsin;
+                });
+                
+                console.log('处理后的安全ASIN数据:', safeAsins.length, '个');
             
             return `
     <!-- 推荐ASIN产品页（所有产品） -->
     <div class="slide">
         <h2>🛍️ 推荐ASIN产品</h2>
         <div class="asin-grid-single-page" style="grid-template-columns: repeat(${gridColumns}, 1fr);">
-            ${recommendedAsins.map((asin, index) => `
+            ${safeAsins.map((asin, index) => `
                 <div class="asin-card-single-page">
                     <div class="asin-image-single-page">
                         <img src="${asin.image}" alt="${asin.title}" 
-                             onerror="this.innerHTML='<div style=\\'color:#666;font-size:10px;text-align:center;padding:20px;\\'>图片<br>加载失败</div>'" />
+                             onerror="this.src='https://via.placeholder.com/140x140?text=No+Image';this.onerror=null;" />
                     </div>
                     <div class="asin-label" style="display: none;">产品 ${index + 1}</div>
                 </div>
@@ -26973,25 +27133,54 @@
         
         <div style="display: none; text-align: center; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
             <p style="color: #495057; font-size: 14px; margin: 0;">
-                📊 共 ${recommendedAsins.length} 个推荐产品 | ${gridColumns} 列布局
+                📊 共 ${safeAsins.length} 个推荐产品 | ${gridColumns} 列布局
             </p>
         </div>
     </div>`;
+    
+            } catch (error) {
+                console.error('生成ASIN页面时发生错误:', error);
+                return `
+    <!-- ASIN页面生成错误 -->
+    <div class="slide">
+        <h2>🛍️ 推荐ASIN产品</h2>
+        <div style="text-align: center; padding: 60px; color: #d32f2f;">
+            <h3>⚠️ 产品页面生成失败</h3>
+            <p>错误信息: ${error.message}</p>
+            <p>请刷新页面重试</p>
+        </div>
+    </div>`;
+            }
         }
         
         // 生成选品分析页面
         function generateAnalysisSlide(analysis, totalCount) {
-            // 获取热度最高的项目
-            const topProductTypes = Object.entries(analysis.productTypes)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 3);
-            const topMaterials = Object.entries(analysis.materials)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 3);
-            const topKeywords = Object.entries(analysis.keywords)
-                .sort(([,a], [,b]) => b - a);
-            const topDesignElements = Object.entries(analysis.designElements)
-                .sort(([,a], [,b]) => b - a);
+            try {
+                console.log('生成分析页面，分析数据:', analysis, '总数:', totalCount);
+                
+                // 数据验证和默认值
+                const safeAnalysis = {
+                    productTypes: analysis?.productTypes || { '通用产品': 1 },
+                    materials: analysis?.materials || { '混合材质': 1 },
+                    keywords: analysis?.keywords || { '基础款': 1 },
+                    designElements: analysis?.designElements || { '经典设计': 1 }
+                };
+                
+                const safeTotalCount = Math.max(totalCount || 1, 1); // 避免除零错误
+                
+                // 获取热度最高的项目
+                const topProductTypes = Object.entries(safeAnalysis.productTypes)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 3);
+                const topMaterials = Object.entries(safeAnalysis.materials)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 3);
+                const topKeywords = Object.entries(safeAnalysis.keywords)
+                    .sort(([,a], [,b]) => b - a);
+                const topDesignElements = Object.entries(safeAnalysis.designElements)
+                    .sort(([,a], [,b]) => b - a);
+                
+                console.log('分析结果处理完成');
             
             return `
     <!-- 选品分析页 -->
@@ -27003,7 +27192,7 @@
                 <h4 style="color: #FF9900; margin-bottom: 12px; font-size: 15px;">🎯 产品类型热度分析</h4>
                 <div style="font-size: 12px; line-height: 1.4;">
                     ${topProductTypes.map(([type, count]) => {
-                        const heat = getHeatLevel(count, totalCount);
+                        const heat = getHeatLevel(count, safeTotalCount);
                         return `<div style="margin-bottom: 6px;"><strong>${heat.level} ${type}</strong> (${heat.desc})</div>`;
                     }).join('')}
                     <div style="margin-top: 8px; padding: 6px; background: #e8f5e8; border-radius: 4px; font-size: 10px; color: #155724;">
@@ -27016,7 +27205,7 @@
                 <h4 style="color: #FF9900; margin-bottom: 12px; font-size: 15px;">🧵 材质成分热度分析</h4>
                 <div style="font-size: 12px; line-height: 1.4;">
                     ${topMaterials.map(([material, count]) => {
-                        const heat = getHeatLevel(count, totalCount);
+                        const heat = getHeatLevel(count, safeTotalCount);
                         return `<div style="margin-bottom: 6px;"><strong>${heat.level} ${material}</strong> (${heat.desc})</div>`;
                     }).join('')}
                     <div style="margin-top: 8px; padding: 6px; background: #fff3cd; border-radius: 4px; font-size: 10px; color: #856404;">
@@ -27066,12 +27255,46 @@
             </div>
         </div>
     </div>`;
+    
+            } catch (error) {
+                console.error('生成分析页面时发生错误:', error);
+                return `
+    <!-- 分析页面生成错误 -->
+    <div class="slide">
+        <h2>📊 选品分析</h2>
+        <div style="text-align: center; padding: 60px; color: #d32f2f;">
+            <h3>⚠️ 分析页面生成失败</h3>
+            <p>错误信息: ${error.message}</p>
+            <p>将显示基础分析信息</p>
+        </div>
+    </div>`;
+            }
         }
         
         // 生成选品策略页面（基于实际数据深度分析）
         function generateStrategySlide(analysis, record) {
-            // 深度分析ITK数据
-            const deepAnalysis = analyzeITKData(record);
+            try {
+                console.log('生成策略页面，记录:', record);
+                
+                // 深度分析ITK数据
+                let deepAnalysis;
+                try {
+                    deepAnalysis = analyzeITKData(record);
+                } catch (e) {
+                    console.warn('ITK深度分析失败，使用默认分析:', e);
+                    deepAnalysis = {
+                        advantages: [
+                            '产品类型符合市场需求',
+                            '价格区间具有竞争优势',
+                            '适合目标用户群体'
+                        ],
+                        opportunities: [
+                            '市场潜力较大',
+                            '竞争相对较少',
+                            '用户接受度高'
+                        ]
+                    };
+                }
             
             return `
     <!-- 选品策略页 -->
@@ -27120,12 +27343,29 @@
             </div>
         </div>
     </div>`;
+    
+            } catch (error) {
+                console.error('生成策略页面时发生错误:', error);
+                return `
+    <!-- 策略页面生成错误 -->
+    <div class="slide">
+        <h2>💡 选品策略</h2>
+        <div style="text-align: center; padding: 60px; color: #d32f2f;">
+            <h3>⚠️ 策略页面生成失败</h3>
+            <p>错误信息: ${error.message}</p>
+            <p>请联系技术支持</p>
+        </div>
+    </div>`;
+            }
         }
         
         // 深度分析ITK数据，生成精准的选品策略
         function analyzeITKData(record) {
-            const itk = record.ITK.toLowerCase();
-            const pt = record.PT.toLowerCase();
+            try {
+                console.log('深度分析ITK数据:', record);
+                
+                const itk = (record.ITK || '').toLowerCase();
+                const pt = (record.PT || '').toLowerCase();
             const asins = record.recommendedAsins;
             const priceRange = record.price_band;
             
